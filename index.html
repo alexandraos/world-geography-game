@@ -198,20 +198,52 @@
             const [selectedStat, setSelectedStat] = useState(null);
 
             useEffect(() => {
+                let cancelled = false;
                 const fetchCountries = async () => {
-                    try {
-                        const res = await fetch('https://restcountries.com/v3.1/all?fields=name,flags,capital,continents,population,area,borders,latlng,cca3');
-                        if (!res.ok) throw new Error('Failed to fetch');
-                        const data = await res.json();
-                        const valid = data.filter(c => c.name?.common && c.flags?.svg && c.population && c.latlng && c.continents);
-                        setCountries(valid);
-                        setLoading(false);
-                    } catch (err) {
-                        setError('Could not load data. Check internet.');
+                    const sources = [
+                        'https://restcountries.com/v3.1/all?fields=name,flags,capital,continents,population,area,borders,latlng,cca3',
+                        'https://cdn.jsdelivr.net/npm/world-countries@5.1.0/countries.json',
+                        'https://unpkg.com/world-countries@5.1.0/countries.json'
+                    ];
+                    const errors = [];
+                    for (const url of sources) {
+                        try {
+                            const res = await fetch(url);
+                            if (!res.ok) throw new Error('HTTP ' + res.status);
+                            const data = await res.json();
+                            if (!Array.isArray(data)) throw new Error('Unexpected country data format');
+                            const valid = data.map(c => ({
+                                ...c,
+                                continents: c.continents?.length ? c.continents : [
+                                    c.region === 'Americas'
+                                        ? (c.subregion === 'South America' ? 'South America' : 'North America')
+                                        : c.region
+                                ]
+                            })).filter(c =>
+                                c.name?.common && c.flags?.svg &&
+                                Number.isFinite(c.population) && c.population > 0 &&
+                                Number.isFinite(c.area) && c.area > 0 &&
+                                c.latlng?.length >= 2 && c.continents?.[0]
+                            );
+                            if (valid.length < 4) throw new Error('Only ' + valid.length + ' usable countries');
+                            if (!cancelled) {
+                                setCountries(valid);
+                                setError(null);
+                                setLoading(false);
+                            }
+                            return;
+                        } catch (err) {
+                            console.warn('Country source failed:', url, err);
+                            errors.push(err.message);
+                        }
+                    }
+                    if (!cancelled) {
+                        setError('Unable to load country data. ' + errors.join(' / '));
                         setLoading(false);
                     }
                 };
                 fetchCountries();
+                return () => { cancelled = true; };
             }, []);
 
             // Utilities
@@ -325,6 +357,14 @@
                          <Icon path={Icons.Globe} size={48} className="animate-spin" />
                         <p className="text-xl font-light">Loading World Data...</p>
                     </div>
+                </div>
+            );
+
+            if (error) return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+                    <h1 className="text-2xl font-bold text-red-600">Country data unavailable</h1>
+                    <p className="mt-4 max-w-lg text-gray-700">{error}</p>
+                    <button onClick={() => window.location.reload()} className="mt-6 bg-indigo-600 text-white px-6 py-3 rounded-xl">Retry</button>
                 </div>
             );
 
