@@ -212,14 +212,31 @@
                             if (!res.ok) throw new Error('HTTP ' + res.status);
                             const data = await res.json();
                             if (!Array.isArray(data)) throw new Error('Unexpected country data format');
-                            const valid = data.map(c => ({
-                                ...c,
-                                continents: c.continents?.length ? c.continents : [
-                                    c.region === 'Americas'
-                                        ? (c.subregion === 'South America' ? 'South America' : 'North America')
-                                        : c.region
-                                ]
-                            })).filter(c =>
+                            const valid = data.map(c => {
+                                const region = c.region || '';
+                                const subregion = c.subregion || '';
+                                const continent = c.continents?.[0] ||
+                                    (region === 'Americas'
+                                        ? (subregion === 'South America' ? 'South America' : 'North America')
+                                        : region);
+                                const name = typeof c.name === 'string'
+                                    ? { common: c.name }
+                                    : c.name;
+                                const flagSvg = c.flags?.svg ||
+                                    (c.cca2 ? 'https://flagcdn.com/' + c.cca2.toLowerCase() + '.svg' : null);
+                                return {
+                                    ...c,
+                                    name,
+                                    flags: { ...c.flags, svg: flagSvg },
+                                    continents: [continent],
+                                    capital: Array.isArray(c.capital) ? c.capital :
+                                        (typeof c.capital === 'string' ? [c.capital] : []),
+                                    borders: Array.isArray(c.borders) ? c.borders : [],
+                                    latlng: c.latlng || c.latLng || [],
+                                    population: Number(c.population),
+                                    area: Number(c.area)
+                                };
+                            }).filter(c =>
                                 c.name?.common && c.flags?.svg &&
                                 Number.isFinite(c.population) && c.population > 0 &&
                                 Number.isFinite(c.area) && c.area > 0 &&
