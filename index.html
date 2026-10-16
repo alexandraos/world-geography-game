@@ -233,12 +233,11 @@
                                         (typeof c.capital === 'string' ? [c.capital] : []),
                                     borders: Array.isArray(c.borders) ? c.borders : [],
                                     latlng: c.latlng || c.latLng || [],
-                                    population: Number(c.population),
+                                    population: Number(c.population) || 0,
                                     area: Number(c.area)
                                 };
                             }).filter(c =>
                                 c.name?.common && c.flags?.svg &&
-                                Number.isFinite(c.population) && c.population > 0 &&
                                 Number.isFinite(c.area) && c.area > 0 &&
                                 c.latlng?.length >= 2 && c.continents?.[0]
                             );
