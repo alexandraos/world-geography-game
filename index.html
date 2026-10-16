@@ -327,6 +327,7 @@
                 const getVal = (c, id) => {
                     if(id === 'density') return (c.population / (c.area || 1));
                     if(id === 'borders') return c.borders?.length || 0;
+                    if(id === 'pop') return c.population || 0;
                     return c[id] || 0;
                 }
 
